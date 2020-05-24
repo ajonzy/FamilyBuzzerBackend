@@ -4,8 +4,11 @@ from flask_marshmallow import Marshmallow
 from flask_cors import CORS
 from flask_heroku import Heroku
 
+import random
+import string
+
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = ""
+app.config["SQLALCHEMY_DATABASE_URI"] = "postgres://jwvgoesyetehzt:6e011fd4118f8fd0157b386251b52016f639a38f57db1b01824928e9c10826c2@ec2-35-171-31-33.compute-1.amazonaws.com:5432/det8jjb7qejlel"
 
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
@@ -14,9 +17,11 @@ CORS(app)
 
 
 class Session(db.Model):
+    __tablename__ = "session"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(), nullable=False, unique=True)
-    users = db.relationship("User", backref="session", lazy=True)
+    users = db.relationship("User", cascade="all,delete", backref="session", lazy=True)
+    buzzer_lists = db.relationship("BuzzerList", cascade="all,delete", backref="session", lazy=True)
 
     def __init__(self, name):
         self.name = name
@@ -30,11 +35,12 @@ sessions_schema = SessionSchema(many=True)
 
 
 class User(db.Model):
+    __tablename__ = "user"
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(), nullable=False, unique=True)
+    name = db.Column(db.String(), nullable=False)
     is_host = db.Column(db.Boolean, nullable=False)
     session_id = db.Column(db.Integer, db.ForeignKey('session.id'), nullable=False)
-    buzzer_lists = db.relationship("BuzzerList", backref="user", lazy=True)
+    buzzer_lists = db.relationship("BuzzerList", cascade="all,delete", backref="user", lazy=True)
 
     def __init__(self, name, is_host, session_id):
         self.name = name
@@ -49,10 +55,11 @@ user_schema = UserSchema()
 users_schema = UserSchema(many=True)
 
 
-class BuzzerList(db.model):
+class BuzzerList(db.Model):
+    __tablename__ = "buzzer_list"
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.Integer, db.ForeignKey('session.id'), nullable=False)
-    user_id = db.Column(db.String(), db.ForeignKey('user.name'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     def __init__(self, session_id, user_id):
         self.session_id = session_id
@@ -74,18 +81,86 @@ def create_session():
     session_name = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(5))
 
     session = Session(session_name)
-    session_host = User(user_name, True, session.id)
-
     db.session.add(session)
+    db.session.commit()
+    
+    session_host = User(user_name, True, session.id)
     db.session.add(session_host)
     db.session.commit()
 
     return jsonify("Session Created")
 
-@app.route("session/get", methods=["GET"])
+@app.route("/session/get", methods=["GET"])
 def get_all_sessions():
     all_sessions = db.session.query(Session).all()
     return jsonify(sessions_schema.dump(all_sessions))
+
+@app.route("/session/get/<id>", methods=["GET"])
+def get_session(id):
+    session = db.session.query(Session).filter(Session.id == id).first()
+    return jsonify(session_schema.dump(session))
+
+@app.route("/session/delete/<id>", methods=["DELETE"])
+def delete_session(id):
+    session = db.session.query(Session).filter(Session.id == id).first()
+    db.session.delete(session)
+    db.session.commit()
+    return jsonify("Session Deleted")
+
+@app.route("/user/create", methods=["POST"])
+def create_user():
+    post_data = request.get_json()
+    user_name = post_data.get("name")
+    session_id = post_data.get("session_id")
+
+    user = User(user_name, False, session_id)
+    db.session.add(user)
+    db.session.commit()
+
+    return jsonify("User Created")
+
+@app.route("/user/get", methods=["GET"])
+def get_all_users():
+    all_users = db.session.query(User).all()
+    return jsonify(users_schema.dump(all_users))
+
+@app.route("/user/get/<id>", methods=["GET"])
+def get_user(id):
+    user = db.session.query(User).filter(user.id == id).first()
+    return jsonify(user_schema.dump(user))
+
+@app.route("/user/get/session/<id>")
+def get_users_by_session(id):
+    all_users = db.session.query(User).filter(User.session_id == id).all()
+    return jsonify(users_schema.dump(all_users))
+
+
+@app.route("/buzzer_list/add")
+def add_buzzer():
+    post_data = request.get_json()
+    session_id = post_data.get("session_id")
+    user_id = post_data.get("user_id")
+
+    buzzer = BuzzerList(session_id, user_id)
+    db.session.add(buzzer)
+    db.session.commit()
+
+    return jsonify("Buzzer Added")
+
+@app.route("/buzzer_list/get")
+def get_all_buzzers():
+    buzzers = db.session.query(BuzzerList).all()
+    return jsonify(buzzer_lists_schema.dump(buzzers))
+
+@app.route("/buzzer_list/get/<id>")
+def get_buzzer(id):
+    buzzers = db.session.query(BuzzerList).filter(BuzzerList.id == id).first()
+    return jsonify(buzzer_list_schema.dump(buzzers))
+
+@app.route("/buzzer_list/get/session/<id>")
+def get_buzzers_by_session(id):
+    all_buzzers = db.session.query(BuzzerList).filter(BuzzerList.session_id == id).all()
+    return jsonify(buzzer_lists_schema.dump(all_buzzers))
 
 
 if __name__ == "__main__":
