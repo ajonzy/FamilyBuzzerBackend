@@ -78,7 +78,7 @@ def create_session():
     post_data = request.get_json()
     user_name = post_data.get("name")
 
-    session_name = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(5))
+    session_name = ''.join(random.SystemRandom().choice(string.ascii_uppercase) for _ in range(5))
 
     session = Session(session_name)
     db.session.add(session)
@@ -88,7 +88,12 @@ def create_session():
     db.session.add(session_host)
     db.session.commit()
 
-    return jsonify("Session Created")
+    info = {
+        "session": session_schema.dump(session),
+        "user": user_schema.dump(session_host)
+    }
+
+    return jsonify(info)
 
 @app.route("/session/get", methods=["GET"])
 def get_all_sessions():
@@ -99,6 +104,16 @@ def get_all_sessions():
 def get_session(id):
     session = db.session.query(Session).filter(Session.id == id).first()
     return jsonify(session_schema.dump(session))
+
+@app.route("/session/get/name/<name>", methods=["GET"])
+def get_session_by_name(name):
+    session = db.session.query(Session).filter(Session.name == name).first()
+    return jsonify(session_schema.dump(session))
+
+@app.route("/session/get/host/<id>", methods=["GET"])
+def get_session_host(id):
+    host = db.session.query(User).filter(User.session_id == id and User.is_host == True).first()
+    return jsonify(user_schema.dump(host))
 
 @app.route("/session/delete/<id>", methods=["DELETE"])
 def delete_session(id):
@@ -117,7 +132,7 @@ def create_user():
     db.session.add(user)
     db.session.commit()
 
-    return jsonify("User Created")
+    return jsonify(user_schema.dump(user))
 
 @app.route("/user/get", methods=["GET"])
 def get_all_users():
@@ -126,7 +141,7 @@ def get_all_users():
 
 @app.route("/user/get/<id>", methods=["GET"])
 def get_user(id):
-    user = db.session.query(User).filter(user.id == id).first()
+    user = db.session.query(User).filter(User.id == id).first()
     return jsonify(user_schema.dump(user))
 
 @app.route("/user/get/session/<id>")
@@ -135,7 +150,7 @@ def get_users_by_session(id):
     return jsonify(users_schema.dump(all_users))
 
 
-@app.route("/buzzer_list/add")
+@app.route("/buzzer_list/add", methods=["POST"])
 def add_buzzer():
     post_data = request.get_json()
     session_id = post_data.get("session_id")
@@ -161,6 +176,28 @@ def get_buzzer(id):
 def get_buzzers_by_session(id):
     all_buzzers = db.session.query(BuzzerList).filter(BuzzerList.session_id == id).all()
     return jsonify(buzzer_lists_schema.dump(all_buzzers))
+
+@app.route("/buzzer_list/get/usernames/session/<id>")
+def get_buzzer_usernames_by_session(id):
+    all_buzzers = db.session.query(BuzzerList.user_id).filter(BuzzerList.session_id == id).all()
+    users = []
+
+    for user_id in all_buzzers:
+        user = db.session.query(User.name).filter(User.id == user_id).first()
+        users.append(user[0])
+
+    return jsonify(users)
+
+@app.route("/buzzer_list/delete/session/<id>", methods=["DELETE"])
+def delete_buzzers_by_session(id):
+    all_buzzers = db.session.query(BuzzerList).filter(BuzzerList.session_id == id).all()
+
+    for buzzer in all_buzzers:
+        db.session.delete(buzzer)
+
+    db.session.commit()
+
+    return jsonify("Buzzers Deleted")
 
 
 if __name__ == "__main__":
