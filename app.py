@@ -161,7 +161,8 @@ def add_buzzer():
     session_id = post_data.get("session_id")
     user_id = post_data.get("user_id")
 
-    buzzer_check = db.session.query(BuzzerList).filter(BuzzerList.session_id == session_id and BuzzerList.user_id == user_id).all()
+    buzzer_check = db.session.query(BuzzerList).filter(BuzzerList.session_id == session_id).filter( BuzzerList.user_id == user_id).all()
+    print(buzzer_check)
     if len(buzzer_check) == 0:
         buzzer = BuzzerList(session_id, user_id)
         db.session.add(buzzer)
