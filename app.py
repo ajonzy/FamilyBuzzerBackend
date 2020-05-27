@@ -78,7 +78,12 @@ def create_session():
     post_data = request.get_json()
     user_name = post_data.get("name")
 
-    session_name = ''.join(random.SystemRandom().choice(string.ascii_uppercase) for _ in range(5))
+    session_name = ""
+    while True:
+        session_name = ''.join(random.SystemRandom().choice(string.ascii_uppercase) for _ in range(5))
+        session_check = db.session.query(Session).filter(Session.name == session_name).all()
+        if len(session_check) == 0:
+            break
 
     session = Session(session_name)
     db.session.add(session)
@@ -156,11 +161,15 @@ def add_buzzer():
     session_id = post_data.get("session_id")
     user_id = post_data.get("user_id")
 
-    buzzer = BuzzerList(session_id, user_id)
-    db.session.add(buzzer)
-    db.session.commit()
+    buzzer_check = db.session.query(BuzzerList).filter(BuzzerList.session_id == session_id and BuzzerList.user_id == user_id).all()
+    if len(buzzer_check) == 0:
+        buzzer = BuzzerList(session_id, user_id)
+        db.session.add(buzzer)
+        db.session.commit()
 
-    return jsonify("Buzzer Added")
+        return jsonify("Buzzer Added")
+    
+    return jsonify("Buzzer already exists, aborting...")
 
 @app.route("/buzzer_list/get")
 def get_all_buzzers():
