@@ -190,7 +190,6 @@ def get_buzzers_by_session(id):
 @app.route("/buzzer_list/get/usernames/session/<id>")
 def get_buzzer_usernames_by_session(id):
     all_buzzers = db.session.query(BuzzerList.user_id).filter(BuzzerList.session_id == id).all()
-    all_buzzers.sort(key=lambda tup: tup[0])
     users = []
 
     for user_id in all_buzzers:
