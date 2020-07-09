@@ -13,6 +13,8 @@ flask-cors = "*"
 flask-heroku = "*"
 gunicorn = "*"
 psycopg2-binary = "*"
+flask-socketio = "*"
+eventlet = "*"
 
 [requires]
 python_version = "3.7"
