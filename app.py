@@ -1,6 +1,7 @@
 from flask import Flask, request
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
+from flask_heroku import Heroku
 
 import random
 import string
@@ -9,6 +10,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'development key'
 socketio = SocketIO(app, cors_allowed_origins="*")
 CORS(app)
+heroku = Heroku(app)
 
 
 host_list = {}
