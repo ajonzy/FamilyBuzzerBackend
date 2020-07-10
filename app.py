@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 from flask_heroku import Heroku
@@ -14,6 +14,11 @@ heroku = Heroku(app)
 
 
 host_list = {}
+
+
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify(host_list)
 
 
 @socketio.on('connect')
