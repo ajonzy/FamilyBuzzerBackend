@@ -33,7 +33,9 @@ def on_disconnect():
     print(request.sid)
     for host in host_list.values():
         if host["id"] == request.sid:
-            host_list.pop(host["session"])
+            session = host["session"]
+            host_list.pop(session)
+            emit("host_disconnect", {"session": session}, broadcast=True)
             break
     print(host_list)
 
