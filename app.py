@@ -70,7 +70,7 @@ def get_buzzers(data):
 @socketio.on("clear_buzzers")
 def clear_buzzers(data):
     session_list[data.get("session")]["buzz_list"] = []
-    emit("buzzers_cleared", broadcast=True)
+    emit("buzzers_cleared", {"session": data.get("session")}, broadcast=True)
 
 @socketio.on("join_session")
 def join_session(data):
