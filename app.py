@@ -41,7 +41,8 @@ def on_disconnect():
         session_list.pop(connection["session"])
         emit("host_disconnect", {"session": connection["session"]}, broadcast=True)
     elif connection["type"] == "user":
-        session_list[connection["session"]]["users"].remove(connection["name"])
+        if connection["name"] in session_list.get(connection["session"])["users"]:
+            session_list.get(connection["session"])["users"].remove(connection["name"])
 
     connection_list.pop(request.sid)
     print(connection_list)
