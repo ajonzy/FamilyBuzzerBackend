@@ -13,65 +13,80 @@ CORS(app)
 heroku = Heroku(app)
 
 
-host_list = {}
+connection_list = {}
+session_list = {}
 
 
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify(host_list)
+    return jsonify(session_list)
 
 
 @socketio.on('connect')
 def on_connect():
+    connection_list[request.sid] = {"type": "", "session": "", "name": ""}
     print('user connected')
     print(request.sid)
-    print(host_list)
+    print(connection_list)
+    print(session_list)
 
 @socketio.on('disconnect')
 def on_disconnect():
     print('user disconnected')
     print(request.sid)
-    for host in host_list.values():
-        if host["id"] == request.sid:
-            session = host["session"]
-            host_list.pop(session)
-            emit("host_disconnect", {"session": session}, broadcast=True)
-            break
-    print(host_list)
+
+    connection = connection_list[request.sid]
+
+    if connection["type"] == "host":
+        session_list.pop(connection["session"])
+        emit("host_disconnect", {"session": connection["session"]}, broadcast=True)
+    elif connection["type"] == "user":
+        session_list[connection["session"]]["users"].remove(connection["name"])
+
+    connection_list.pop(request.sid)
+    print(connection_list)
+    print(session_list)
 
 @socketio.on('host_user')
 def add_host(data):
     session_name = ""
     while True:
         session_name = ''.join(random.SystemRandom().choice(string.ascii_uppercase) for _ in range(5))
-        session_check = host_list.get(session_name, -1)
+        session_check = session_list.get(session_name, -1)
         if session_check == -1:
             break
 
-    host_list[session_name] = {"id": request.sid, "session": session_name, "host": data.get("host"), "buzz_list": []}
+    connection_list[request.sid] = {"type": "host", "session": session_name, "name": data.get("host")}
+    session_list[session_name] = {"host": data.get("host"), "users": [], "buzz_list": []}
     emit("session_created", {"session": session_name})
 
 @socketio.on("get_buzzers")
 def get_buzzers(data):
     emit("buzzers", {
         "session": data.get("session"),
-        "buzz_list": host_list[data.get("session")]["buzz_list"]
+        "buzz_list": session_list[data.get("session")]["buzz_list"]
         })
 
 @socketio.on("clear_buzzers")
 def clear_buzzers(data):
-    host_list[data.get("session")]["buzz_list"] = []
+    session_list[data.get("session")]["buzz_list"] = []
     emit("buzzers_cleared", broadcast=True)
 
 @socketio.on("join_session")
 def join_session(data):
-    emit("session_data", {"session_data": host_list.get(data.get("session"), -1)})
+    if data.get("name") in session_list.get(data.get("session"), {}).get("users", []):
+        emit("name_taken")
+    else:
+        connection_list[request.sid] = {"type": "user", "session": data.get("session"), "name": data.get("name")}
+        session_list.get(data.get("session"), {}).get("users", []).append(data.get("name"))
+        emit("session_data", {"session_data": session_list.get(data.get("session"), -1)})
 
 @socketio.on("buzz")
 def handle_buzz(data):
-    host_list[data.get("session")]["buzz_list"].append(data.get("name"))
-    emit("new_buzz", {"session": data.get("session"), "buzz_list": host_list[data.get("session")]["buzz_list"]}, broadcast=True)
-    emit("buzz_added", {"session": data.get("session"), "buzz_list": host_list[data.get("session")]["buzz_list"]})
+    if data.get("name") not in session_list[data.get("session")]["buzz_list"]:
+        session_list[data.get("session")]["buzz_list"].append(data.get("name"))
+        emit("new_buzz", {"session": data.get("session"), "buzz_list": session_list[data.get("session")]["buzz_list"]}, broadcast=True)
+        emit("buzz_added", {"session": data.get("session"), "buzz_list": session_list[data.get("session")]["buzz_list"]})
 
 
 if __name__ == "__main__":
