@@ -19,7 +19,7 @@ session_list = {}
 
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({"Connesctions": connection_list, "Sessions": session_list})
+    return jsonify({"Connections": connection_list, "Sessions": session_list})
 
 
 @socketio.on('connect')
