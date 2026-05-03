@@ -6,12 +6,13 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-flask = "*"
-flask-cors = "*"
-flask-heroku = "*"
-gunicorn = "*"
-flask-socketio = "*"
-eventlet = "*"
+flask = ">=3.0,<4"
+flask-cors = ">=4,<5"
+flask-socketio = ">=5.3,<6"
+python-socketio = ">=5.11,<6"
+gunicorn = ">=22,<23"
+eventlet = ">=0.36,<1"
+dnspython = ">=2.6,<3"
 
 [requires]
-python_version = "3.7"
+python_version = "3.11"
